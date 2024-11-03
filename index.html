@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poetry Generator with Emojis</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #195E83 50%, #F0B450 50%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+        .container {
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            background-color: #6fcef1(255, 255, 255, 0.8);
+            overflow-y: auto;
+            height: 100%;
+        }
+        #poetryContainer {
+            width: 70%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #favoritesContainer {
+            width: 50%;
+            padding: 20px;
+            box-sizing: border-box;
+            border: 2px solid #50223C;
+            border-radius: 8px;
+            background-color: #F0DAC5;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #333333;
+        }
+        input[type="text"], input[type="number"], select {
+            padding: 10px;
+            width: 100%;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #035c5a;
+            color: rgb(213, 233, 99);
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #a2a5c3;
+        }
+        #result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            text-align: left;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #fff;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        #loading {
+            display: none;
+            margin-top: 20px;
+        }
+        #wordCount, #charCount {
+            margin-top: 10px;
+        }
+        #audioControls {
+            margin-top: 20px;
+        }
+        .flex-container {
+            display: flex;
+            width: 100%;
+        }
+        .hidden {
+            display: none;
+        }
+        .favorite-poem {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+<div class="flex-container">
+    <div class="container" id="favoritesContainer">
+        <h1>Your Favorite Poems</h1>
+        <div id="favorites" style="flex: 1; overflow-y: auto;"></div>
+        <button onclick="clearFavorites()">Clear Favorites</button>
+        <button onclick="showPoetryGenerator()">Back to Poetry Generator</button>
+        <button onclick="viewFavorites()">View Favorites</button>
+    </div>
+
+    <div class="container" id="poetryContainer">
+        <h1>Poetry Generator</h1>
+        <input type="text" id="seedText" placeholder="Enter seed text" required>
+        <input type="text" id="customWords" placeholder="Enter custom words (comma separated)">
+        <select id="theme" onchange="changeMusic()" required>
+            <option value="general">Select Theme</option>
+            <option value="nature">Nature 🌳</option>
+            <option value="love">Love ❤️</option>
+            <option value="sadness">Sadness 😢</option>
+            <option value="joy">Joy 😊</option>
+        </select>
+        <input type="number" id="length" placeholder="Enter number of lines" value="5" required>
+
+        <button onclick="generatePoetry()">Generate Poetry</button>
+        <button onclick="generateRandomPoetry()">Generate Random Poetry</button>
+        <button onclick="clearFields()">Clear</button>
+        <button onclick="downloadPoetry()">Download Poetry</button>
+        <button onclick="sharePoetry()">Share Poetry</button>
+        <button onclick="savePoetry()">Save Poetry</button>
+        <button onclick="addToFavorites()">Add to Favorites</button>
+
+        <div id="loading">Loading...</div>
+        <div id="result"></div>
+        <div id="wordCount"></div>
+        <div id="charCount"></div>
+
+        <div id="audioControls">
+            <audio id="backgroundMusic" loop>
+                <source src="https://www.bensound.com/bensound-music/bensound-ukulele.mp3" type="audio/mpeg">
+                Your browser does not support the audio tag.
+            </audio>
+            <button onclick="toggleMusic()">Play/Pause Music</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let musicPlaying = false; // Music is initially not playing
+    let savedPoems = []; // Array to store saved poems
+
+    const musicMap = {
+        general: "https://www.bensound.com/bensound-music/bensound-ukulele.mp3",
+        nature: "https://www.bensound.com/bensound-music/bensound-ukulele.mp3",
+        love: "https://www.bensound.com/bensound-music/bensound-ukulele.mp3",
+        sadness: "https://www.bensound.com/bensound-music/bensound-ukulele.mp3",
+        joy: "https://www.bensound.com/bensound-music/bensound-ukulele.mp3"
+    };
+
+    function changeMusic() {
+        const theme = document.getElementById('theme').value;
+        const audio = document.getElementById('backgroundMusic');
+        audio.src = musicMap[theme]; // Change audio source based on the selected theme
+        audio.play().catch(error => console.log("Auto-play blocked:", error)); // Handles auto-play block
+    }
+
+    function generatePoetry() {
+        const seedText = document.getElementById('seedText').value;
+        const length = document.getElementById('length').value;
+        const customWords = document.getElementById('customWords').value;
+        const theme = document.getElementById('theme').value;
+
+        if (!seedText) {
+            alert('Please enter seed text');
+            return;
+        }
+
+        document.getElementById('loading').style.display = 'block';
+
+        fetch('/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                start_text: seedText, 
+                length: parseInt(length), 
+                custom_words: customWords, 
+                theme: theme 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loading').style.display = 'none';
+            if (data.generated_poetry) {
+                displayPoetry(data.generated_poetry);
+            } else {
+                document.getElementById('result').innerText = 'Error: ' + data.error;
+            }
+        })
+        .catch(error => {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('result').innerText = 'Error: ' + error.message;
+        });
+    }
+
+    function displayPoetry(poem) {
+        document.getElementById('result').innerText = poem;
+        document.getElementById('wordCount').innerText = "Word Count: " + poem.split(' ').length;
+        document.getElementById('charCount').innerText = "Character Count: " + poem.length;
+    }
+
+    function toggleMusic() {
+        const audio = document.getElementById('backgroundMusic');
+        if (musicPlaying) {
+            audio.pause();
+            musicPlaying = false;
+        } else {
+            audio.play().catch(error => console.error("Playback failed: ", error));
+            musicPlaying = true;
+        }
+    }
+
+    function clearFields() {
+        document.getElementById('seedText').value = '';
+        document.getElementById('customWords').value = '';
+        document.getElementById('length').value = '5';
+        document.getElementById('theme').value = 'general';
+        document.getElementById('result').innerText = '';
+        document.getElementById('wordCount').innerText = '';
+        document.getElementById('charCount').innerText = '';
+    }
+
+    function savePoetry() {
+        const poem = document.getElementById('result').innerText;
+        if (poem) {
+            savedPoems.push(poem);
+            alert('Poetry saved!');
+        } else {
+            alert('No poem to save.');
+        }
+    }
+
+    function addToFavorites() {
+        const poem = document.getElementById('result').innerText;
+        if (poem) {
+            const favoriteDiv = document.createElement('div');
+            favoriteDiv.classList.add('favorite-poem');
+            favoriteDiv.innerText = poem;
+            document.getElementById('favorites').appendChild(favoriteDiv);
+            alert('Poem added to favorites!');
+        } else {
+            alert('No poem to add.');
+        }
+    }
+
+    function clearFavorites() {
+        document.getElementById('favorites').innerHTML = '';
+    }
+
+    function downloadPoetry() {
+        const poem = document.getElementById('result').innerText;
+        if (!poem) {
+            alert('No poem to download.');
+            return;
+        }
+        const blob = new Blob([poem], { type: 'text/plain' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'poetry.txt';
+        link.click();
+    }
+
+    function sharePoetry() {
+        const poem = document.getElementById('result').innerText;
+        if (poem) {
+            const textToShare = `Here's a poem I generated: \n\n${poem}`;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'My Poem',
+                    text: textToShare
+                }).catch(error => console.log('Error sharing', error));
+            } else {
+                alert('Your browser does not support sharing.');
+            }
+        } else {
+            alert('No poem to share.');
+        }
+    }
+
+    function generateRandomPoetry() {
+        // Example random poetry generation logic
+        const randomWords = ['sun', 'moon', 'sky', 'star', 'tree', 'river', 'flower'];
+        const poem = randomWords.map(word => `${word} in the sky`).join('\n');
+        displayPoetry(poem);
+    }
+
+    function viewFavorites() {
+        alert('Viewing your favorite poems.');
+    }
+
+    function showPoetryGenerator() {
+        alert('Back to Poetry Generator');
+    }
+</script>
+
+</body>
+</html>
